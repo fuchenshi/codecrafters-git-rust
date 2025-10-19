@@ -1,7 +1,8 @@
 use flate2::read::ZlibDecoder;
-#[allow(unused_imports)]
+use flate2::write::ZlibEncoder;
+use flate2::Compression;
+use sha1::{Digest, Sha1};
 use std::env;
-#[allow(unused_imports)]
 use std::fs;
 use std::io::prelude::*;
 use std::path::Path;
@@ -35,12 +36,44 @@ fn main() {
                             let object_path = Path::new(".git/objects")
                                 .join(hash_prefix)
                                 .join(hash_suffix);
+
                             let compressed_data = fs::read(object_path).unwrap();
                             let mut decoder = ZlibDecoder::new(&compressed_data[..]);
                             let mut decompressed_data = String::new();
                             decoder.read_to_string(&mut decompressed_data).unwrap();
+
                             let (_, object_content) = decompressed_data.split_once('\0').unwrap();
                             print!("{}", object_content)
+                        }
+                        _ => println!("unknown command"),
+                    }
+                }
+                "hash-object" => {
+                    let flag = &args[2];
+                    match &flag[..] {
+                        "-w" => {
+                            let file_path = &args[3];
+                            let file_content = fs::read(file_path).unwrap();
+
+                            let object_header = format!("blob {}\0", file_content.len());
+                            let object_header_bytes = object_header.into_bytes();
+                            let object_data = [object_header_bytes, file_content].concat();
+
+                            let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
+                            encoder.write_all(&object_data).unwrap();
+                            let compressed_data = encoder.finish().unwrap();
+
+                            let mut hasher = Sha1::new();
+                            hasher.update(&object_data);
+                            let object_hash = hasher.finalize();
+                            let object_hash_string = format!("{:x}", object_hash);
+                            let (hash_prefix, hash_suffix) = object_hash_string.split_at(2);
+                            let object_dir = Path::new(".git/objects").join(hash_prefix);
+                            let object_path = object_dir.join(hash_suffix);
+
+                            fs::create_dir_all(object_dir).unwrap();
+                            fs::write(object_path, compressed_data).unwrap();
+                            println!("{}", object_hash_string)
                         }
                         _ => println!("unknown command"),
                     }
