@@ -50,7 +50,7 @@ fn init() {
     println!("Initialized git directory")
 }
 
-fn read_blob(object_hash: &String) {
+fn read_blob(object_hash: &str) {
     let (hash_prefix, hash_suffix) = object_hash.split_at(2);
     let object_path = Path::new(".git/objects")
         .join(hash_prefix)
@@ -65,7 +65,7 @@ fn read_blob(object_hash: &String) {
     print!("{}", object_content)
 }
 
-fn create_blob(file_path: &String) {
+fn create_blob(file_path: &str) {
     let file_content = fs::read(file_path).unwrap();
 
     let object_header = format!("blob {}\0", file_content.len());
