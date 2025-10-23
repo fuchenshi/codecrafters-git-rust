@@ -1,44 +1,60 @@
+use clap::{Parser, Subcommand};
 use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 use flate2::Compression;
 use sha1::{Digest, Sha1};
-use std::env;
 use std::fs;
 use std::io::prelude::*;
 use std::path::Path;
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
 
-    match args.len() {
-        2 => {
-            let cmd = &args[1];
-            match &cmd[..] {
-                "init" => init(),
-                _ => println!("unknown command"),
+#[derive(Subcommand)]
+enum Commands {
+    /// initialize a git repository
+    Init,
+    /// view contents of objects
+    CatFile {
+        /// pretty-print the contents
+        #[arg(short = 'p')]
+        pretty: bool,
+        /// object hash
+        hash: String,
+    },
+    /// compute object ID
+    HashObject {
+        /// write the object
+        #[arg(short = 'w')]
+        write: bool,
+        /// file path
+        path: String,
+    },
+}
+
+fn main() {
+    let cli = Cli::parse();
+
+    match &cli.command {
+        Commands::Init => init(),
+        Commands::CatFile { pretty, hash } => {
+            if *pretty {
+                read_blob(hash);
+            } else {
+                println!("unknown command");
             }
         }
-        4 => {
-            let cmd = &args[1];
-            match &cmd[..] {
-                "cat-file" => {
-                    let flag = &args[2];
-                    match &flag[..] {
-                        "-p" => read_blob(&args[3]),
-                        _ => println!("unknown command"),
-                    }
-                }
-                "hash-object" => {
-                    let flag = &args[2];
-                    match &flag[..] {
-                        "-w" => create_blob(&args[3]),
-                        _ => println!("unknown command"),
-                    }
-                }
-                _ => println!("unknown command"),
+        Commands::HashObject { write, path } => {
+            if *write {
+                create_blob(path);
+            } else {
+                println!("unknown command");
             }
         }
-        _ => println!("unknown command"),
     }
 }
 
