@@ -5,7 +5,7 @@ use flate2::Compression;
 use sha1::{Digest, Sha1};
 use std::fs;
 use std::io::prelude::*;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -67,40 +67,58 @@ fn init() {
 }
 
 fn read_blob(object_hash: &str) {
-    let (hash_prefix, hash_suffix) = object_hash.split_at(2);
-    let object_path = Path::new(".git/objects")
-        .join(hash_prefix)
-        .join(hash_suffix);
-
+    let object_path = get_path_from_hash(object_hash);
     let compressed_data = fs::read(object_path).unwrap();
-    let mut decoder = ZlibDecoder::new(&compressed_data[..]);
-    let mut decompressed_data = String::new();
-    decoder.read_to_string(&mut decompressed_data).unwrap();
-
+    let decompressed_data = decompress(&compressed_data);
     let (_, object_content) = decompressed_data.split_once('\0').unwrap();
     print!("{}", object_content)
 }
 
 fn create_blob(file_path: &str) {
-    let file_content = fs::read(file_path).unwrap();
+    let object_data = get_blob_from_file(file_path);
+    let compressed_data = compress(&object_data);
+    let object_hash = hash(&object_data);
+    let object_path = get_path_from_hash(&object_hash);
+    save_object(&object_path, &compressed_data);
+    println!("{}", object_hash)
+}
 
+fn get_path_from_hash(hash: &str) -> PathBuf {
+    let (hash_prefix, hash_suffix) = hash.split_at(2);
+    Path::new(".git/objects")
+        .join(hash_prefix)
+        .join(hash_suffix)
+}
+
+fn compress(data: &Vec<u8>) -> Vec<u8> {
+    let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
+    encoder.write_all(data).unwrap();
+    encoder.finish().unwrap()
+}
+
+fn decompress(data: &Vec<u8>) -> String {
+    let mut decoder = ZlibDecoder::new(&data[..]);
+    let mut decompressed_data = String::new();
+    decoder.read_to_string(&mut decompressed_data).unwrap();
+    decompressed_data
+}
+
+fn hash(data: &Vec<u8>) -> String {
+    let mut hasher = Sha1::new();
+    hasher.update(data);
+    let object_hash = hasher.finalize();
+    format!("{:x}", object_hash)
+}
+
+fn save_object(path: &PathBuf, contents: &Vec<u8>) {
+    let dir = path.parent().unwrap();
+    fs::create_dir_all(dir).unwrap();
+    fs::write(path, contents).unwrap();
+}
+
+fn get_blob_from_file(path: &str) -> Vec<u8> {
+    let file_content = fs::read(path).unwrap();
     let object_header = format!("blob {}\0", file_content.len());
     let object_header_bytes = object_header.into_bytes();
-    let object_data = [object_header_bytes, file_content].concat();
-
-    let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
-    encoder.write_all(&object_data).unwrap();
-    let compressed_data = encoder.finish().unwrap();
-
-    let mut hasher = Sha1::new();
-    hasher.update(&object_data);
-    let object_hash = hasher.finalize();
-    let object_hash_string = format!("{:x}", object_hash);
-    let (hash_prefix, hash_suffix) = object_hash_string.split_at(2);
-    let object_dir = Path::new(".git/objects").join(hash_prefix);
-    let object_path = object_dir.join(hash_suffix);
-
-    fs::create_dir_all(object_dir).unwrap();
-    fs::write(object_path, compressed_data).unwrap();
-    println!("{}", object_hash_string)
+    [object_header_bytes, file_content].concat()
 }
