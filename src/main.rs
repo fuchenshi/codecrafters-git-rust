@@ -90,27 +90,27 @@ fn get_path_from_hash(hash: &str) -> PathBuf {
         .join(hash_suffix)
 }
 
-fn compress(data: &Vec<u8>) -> Vec<u8> {
+fn compress(data: &[u8]) -> Vec<u8> {
     let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
     encoder.write_all(data).unwrap();
     encoder.finish().unwrap()
 }
 
-fn decompress(data: &Vec<u8>) -> String {
+fn decompress(data: &[u8]) -> String {
     let mut decoder = ZlibDecoder::new(&data[..]);
     let mut decompressed_data = String::new();
     decoder.read_to_string(&mut decompressed_data).unwrap();
     decompressed_data
 }
 
-fn hash(data: &Vec<u8>) -> String {
+fn hash(data: &[u8]) -> String {
     let mut hasher = Sha1::new();
     hasher.update(data);
     let object_hash = hasher.finalize();
     format!("{:x}", object_hash)
 }
 
-fn save_object(path: &PathBuf, contents: &Vec<u8>) {
+fn save_object(path: &PathBuf, contents: &[u8]) {
     let dir = path.parent().unwrap();
     fs::create_dir_all(dir).unwrap();
     fs::write(path, contents).unwrap();
