@@ -1,6 +1,7 @@
 mod cat_file;
 mod hash_object;
 mod init;
+mod ls_tree;
 mod utils;
 
 use clap::{Parser, Subcommand};
@@ -32,6 +33,14 @@ enum Commands {
         /// file path
         path: String,
     },
+    /// show the contents of a tree object
+    LsTree {
+        /// show only file names
+        #[arg(long = "name-only")]
+        name_only: bool,
+        /// tree hash
+        hash: String,
+    },
 }
 
 fn main() {
@@ -53,5 +62,6 @@ fn main() {
                 println!("unknown command");
             }
         }
+        Commands::LsTree { name_only, hash } => ls_tree::ls_tree(hash, *name_only),
     }
 }

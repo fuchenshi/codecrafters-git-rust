@@ -9,12 +9,13 @@ pub fn create_blob(file_path: &str) {
     let object_hash = hash(&object_data);
     let object_path = utils::get_path_from_hash(&object_hash);
     save_object(&object_path, &compressed_data);
-    println!("{}", object_hash)
+    println!("{object_hash}");
 }
 
 fn get_blob_from_file(path: &str) -> Vec<u8> {
     let file_content = fs::read(path).unwrap();
-    let object_header = format!("blob {}\0", file_content.len());
+    let file_size = file_content.len();
+    let object_header = format!("blob {file_size}\0");
     let object_header_bytes = object_header.into_bytes();
     [object_header_bytes, file_content].concat()
 }
