@@ -12,17 +12,22 @@ pub fn get_path_from_hash(hash: &str) -> PathBuf {
         .join(hash_suffix)
 }
 
-pub fn read_object(hash: &str) -> (String, String) {
+pub fn read_object(hash: &str) -> Vec<u8> {
     let object_path = get_path_from_hash(hash);
     let compressed_data = fs::read(object_path).unwrap();
-    let decompressed_data = decompress(&compressed_data);
-    let (object_header, object_content) = decompressed_data.split_once('\0').unwrap();
-    (object_header.to_string(), object_content.to_string())
+    decompress(&compressed_data)
 }
 
-fn decompress(data: &[u8]) -> String {
+pub fn split_once_at_value(vec: &[u8], value: u8) -> (&[u8], &[u8]) {
+    vec.iter()
+        .position(|&b| b == value)
+        .map(|idx| (&vec[..idx], &vec[idx + 1..]))
+        .unwrap()
+}
+
+fn decompress(data: &[u8]) -> Vec<u8> {
     let mut decoder = ZlibDecoder::new(&data[..]);
-    let mut decompressed_data = String::new();
-    decoder.read_to_string(&mut decompressed_data).unwrap();
+    let mut decompressed_data = Vec::new();
+    decoder.read_to_end(&mut decompressed_data).unwrap();
     decompressed_data
 }
