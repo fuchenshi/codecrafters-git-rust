@@ -4,6 +4,7 @@ mod init;
 mod ls_tree;
 mod utils;
 
+use anyhow::{bail, Result};
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
@@ -43,25 +44,27 @@ enum Commands {
     },
 }
 
-fn main() {
+fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Init => init::init(),
+        Commands::Init => init::init()?,
         Commands::CatFile { pretty, hash } => {
             if *pretty {
-                cat_file::read_blob(hash);
+                cat_file::read_blob(hash)?;
             } else {
-                println!("unknown command");
+                bail!("Only -p is supported for now");
             }
         }
         Commands::HashObject { write, path } => {
             if *write {
-                hash_object::create_blob(path);
+                hash_object::create_blob(path)?;
             } else {
-                println!("unknown command");
+                bail!("Only -w is supported for now");
             }
         }
-        Commands::LsTree { name_only, hash } => ls_tree::ls_tree(hash, *name_only),
+        Commands::LsTree { name_only, hash } => ls_tree::ls_tree(hash, *name_only)?,
     }
+
+    Ok(())
 }
